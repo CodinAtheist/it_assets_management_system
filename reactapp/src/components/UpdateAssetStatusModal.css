@@ -1,0 +1,42 @@
+/* UpdateAssetStatusModal specific styles */
+.modal-content {
+  max-width: 600px;
+}
+
+.modal-content h3 {
+  color: #2c3e50;
+  margin: 0;
+}
+
+.form-group .alert {
+  margin-top: 5px;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.form-control:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.actions {
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .actions {
+    flex-direction: column;
+  }
+  
+  .actions .btn {
+    width: 100%;
+  }
+}

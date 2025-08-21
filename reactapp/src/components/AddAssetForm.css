@@ -1,0 +1,38 @@
+/* AddAssetForm specific styles */
+.container h2 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.form-group .alert {
+  margin-top: 5px;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.form-control.is-invalid {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+}
+
+.form-control:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.actions {
+  justify-content: center;
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+  }
+  
+  .actions .btn {
+    width: 100%;
+  }
+}
