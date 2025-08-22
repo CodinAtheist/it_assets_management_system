@@ -15,14 +15,21 @@ public class AssetService {
     @Autowired
     private AssetRepository assetRepository;
 
-    public Asset createAsset(Asset asset) {
-        // Validate serial uniqueness
-        if (assetRepository.findBySerialNumber(asset.getSerialNumber()).isPresent()) {
-            throw new DuplicateAssetException("Serial number already exists");
-        }
-        // Save asset
-        return assetRepository.save(asset);
+  public Asset createAsset(Asset asset) {
+    // Validate serial uniqueness
+    if (assetRepository.findBySerialNumber(asset.getSerialNumber()).isPresent()) {
+      throw new DuplicateAssetException("Asset with the same serial number already exists");
     }
+    
+    // Additional validation for assignedTo when status is ASSIGNED
+    if (asset.getStatus() == AssetStatus.ASSIGNED && 
+        (asset.getAssignedTo() == null || asset.getAssignedTo().trim().isEmpty())) {
+      throw new IllegalArgumentException("assignedTo is required when status is ASSIGNED");
+    }
+    
+    // Save asset
+    return assetRepository.save(asset);
+  }
 
     public List<Asset> getAllAssets(String type, String status, String search) {
         // Filtering

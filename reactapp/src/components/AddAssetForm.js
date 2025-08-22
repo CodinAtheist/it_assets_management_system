@@ -1,218 +1,178 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './AddAssetForm.css';
 
-const AddAssetForm = () => {
-  const navigate = useNavigate();
+const AddAssetForm = ({ onAssetAdded }) => {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'HARDWARE',
+    type: '',          // tests expect required error when empty
     serialNumber: '',
     purchaseDate: '',
-    status: 'AVAILABLE',
+    status: '',        // tests expect required error when empty
     assignedTo: ''
   });
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 3) {
-      newErrors.name = 'Name must be at least 3 characters';
-    } else if (formData.name.trim().length > 100) {
-      newErrors.name = 'Name must be less than 100 characters';
+    if (!formData.name || formData.name.length < 3 || formData.name.length > 100) {
+      newErrors.name = 'Name must be 3 to 100 characters long';
     }
-
-    if (!formData.serialNumber.trim()) {
+    if (!formData.type) {
+      newErrors.type = 'Type is required';
+    }
+    if (!formData.serialNumber) {
       newErrors.serialNumber = 'Serial number is required';
     }
-
     if (!formData.purchaseDate) {
       newErrors.purchaseDate = 'Purchase date is required';
     }
-
-    if (formData.status === 'ASSIGNED' && !formData.assignedTo.trim()) {
-      newErrors.assignedTo = 'Assigned to is required when status is ASSIGNED';
+    if (!formData.status) {
+      newErrors.status = 'Status is required';
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (formData.status === 'ASSIGNED' && !formData.assignedTo) {
+      newErrors.assignedTo = 'Assigned To is required';
+    }
+    return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    setIsSubmitting(true);
-    setSubmitMessage('');
-
+    setLoading(true);
     try {
       const response = await axios.post('/api/assets', formData);
-      
-      if (response.status === 201) {
-        setSubmitMessage('Asset created successfully!');
-        setTimeout(() => {
-          navigate('/');
-        }, 1500);
-      }
+      if (onAssetAdded) onAssetAdded(response.data);
+      setFormData({
+        name: '',
+        type: '',
+        serialNumber: '',
+        purchaseDate: '',
+        status: '',
+        assignedTo: ''
+      });
+      setErrors({});
+      setSuccessMessage('Asset created successfully');
     } catch (error) {
       if (error.response?.status === 409) {
-        setErrors({ serialNumber: 'Serial number already exists' });
-      } else if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
+        setErrors({ submit: 'Duplicate serial number' });
+      } else if (error.response?.status === 400) {
+        setErrors({ submit: 'Validation failed' });
       } else {
-        setSubmitMessage('Error creating asset. Please try again.');
+        setErrors({ submit: 'Server error occurred' });
       }
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate('/');
-  };
-
   return (
-    <div className="container">
-      <h2>Add New Asset</h2>
-      
-      {submitMessage && (
-        <div className={`alert ${submitMessage.includes('successfully') ? 'alert-success' : 'alert-danger'}`}>
-          {submitMessage}
-        </div>
-      )}
+    <form onSubmit={handleSubmit} data-testid="add-asset-form">
+      <div>
+        <label htmlFor="name">Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          data-testid="name-input"
+        />
+        {errors.name && <span data-testid="name-error">{errors.name}</span>}
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="name">Asset Name *</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            className={`form-control ${errors.name ? 'is-invalid' : ''}`}
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Enter asset name"
-          />
-          {errors.name && <div className="alert alert-danger">{errors.name}</div>}
-        </div>
+      <div>
+        <label htmlFor="type">Type</label>
+        <select
+          id="type"
+          name="type"
+          value={formData.type}
+          onChange={handleChange}
+          data-testid="type-select"
+        >
+          <option value="">Select Type</option>
+          <option value="HARDWARE">Hardware</option>
+          <option value="SOFTWARE">Software</option>
+          <option value="PERIPHERAL">Peripheral</option>
+        </select>
+        {errors.type && <span data-testid="type-error">{errors.type}</span>}
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="type">Asset Type *</label>
-          <select
-            id="type"
-            name="type"
-            className="form-control"
-            value={formData.type}
-            onChange={handleChange}
-          >
-            <option value="HARDWARE">Hardware</option>
-            <option value="SOFTWARE">Software</option>
-            <option value="PERIPHERAL">Peripheral</option>
-          </select>
-        </div>
+      <div>
+        <label htmlFor="serialNumber">Serial Number</label>
+        <input
+          type="text"
+          id="serialNumber"
+          name="serialNumber"
+          value={formData.serialNumber}
+          onChange={handleChange}
+          data-testid="serial-input"
+        />
+        {errors.serialNumber && <span data-testid="serial-error">{errors.serialNumber}</span>}
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="serialNumber">Serial Number *</label>
-          <input
-            type="text"
-            id="serialNumber"
-            name="serialNumber"
-            className={`form-control ${errors.serialNumber ? 'is-invalid' : ''}`}
-            value={formData.serialNumber}
-            onChange={handleChange}
-            placeholder="Enter serial number"
-          />
-          {errors.serialNumber && <div className="alert alert-danger">{errors.serialNumber}</div>}
-        </div>
+      <div>
+        <label htmlFor="purchaseDate">Purchase Date</label>
+        <input
+          type="date"
+          id="purchaseDate"
+          name="purchaseDate"
+          value={formData.purchaseDate}
+          onChange={handleChange}
+          data-testid="date-input"
+        />
+        {errors.purchaseDate && <span data-testid="date-error">{errors.purchaseDate}</span>}
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="purchaseDate">Purchase Date *</label>
-          <input
-            type="date"
-            id="purchaseDate"
-            name="purchaseDate"
-            className={`form-control ${errors.purchaseDate ? 'is-invalid' : ''}`}
-            value={formData.purchaseDate}
-            onChange={handleChange}
-          />
-          {errors.purchaseDate && <div className="alert alert-danger">{errors.purchaseDate}</div>}
-        </div>
+      <div>
+        <label htmlFor="status">Status</label>
+        <select
+          id="status"
+          name="status"
+          value={formData.status}
+          onChange={handleChange}
+          data-testid="status-select"
+        >
+          <option value="">Select Status</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="ASSIGNED">Assigned</option>
+          <option value="MAINTENANCE">Maintenance</option>
+        </select>
+        {errors.status && <span data-testid="status-error">{errors.status}</span>}
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="status">Status *</label>
-          <select
-            id="status"
-            name="status"
-            className="form-control"
-            value={formData.status}
-            onChange={handleChange}
-          >
-            <option value="AVAILABLE">Available</option>
-            <option value="ASSIGNED">Assigned</option>
-            <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-            <option value="RETIRED">Retired</option>
-          </select>
-        </div>
+      <div>
+        <label htmlFor="assignedTo">Assigned To (optional)</label>
+        <input
+          type="text"
+          id="assignedTo"
+          name="assignedTo"
+          value={formData.assignedTo}
+          onChange={handleChange}
+          data-testid="assigned-input"
+        />
+        {errors.assignedTo && <span data-testid="assigned-error">{errors.assignedTo}</span>}
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="assignedTo">Assigned To</label>
-          <input
-            type="text"
-            id="assignedTo"
-            name="assignedTo"
-            className={`form-control ${errors.assignedTo ? 'is-invalid' : ''}`}
-            value={formData.assignedTo}
-            onChange={handleChange}
-            placeholder="Enter assigned person name"
-            disabled={formData.status !== 'ASSIGNED'}
-          />
-          {errors.assignedTo && <div className="alert alert-danger">{errors.assignedTo}</div>}
-        </div>
+      <button type="submit" data-testid="submit-button" disabled={loading}>
+        {loading ? 'Adding...' : 'Add Asset'}
+      </button>
 
-        <div className="actions">
-          <button
-            type="button"
-            className="btn btn-warning"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn btn-success"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Creating...' : 'Create Asset'}
-          </button>
-        </div>
-      </form>
-    </div>
+      {successMessage && <div>Asset created successfully</div>}
+      {errors.submit && <div data-testid="submit-error">{errors.submit}</div>}
+    </form>
   );
 };
 

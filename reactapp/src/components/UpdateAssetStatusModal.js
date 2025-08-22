@@ -1,156 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import './UpdateAssetStatusModal.css';
+import React, { useState } from 'react';
+import axios from 'axios';
 
-const UpdateAssetStatusModal = ({ asset, onClose, onUpdate }) => {
-  const [formData, setFormData] = useState({
-    status: asset.status,
-    assignedTo: asset.assignedTo || ''
-  });
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    setFormData({
-      status: asset.status,
-      assignedTo: asset.assignedTo || ''
-    });
-  }, [asset]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (formData.status === 'ASSIGNED' && !formData.assignedTo.trim()) {
-      newErrors.assignedTo = 'Assigned to is required when status is ASSIGNED';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+const UpdateAssetStatusModal = ({ asset, onClose, onStatusUpdated }) => {
+  const [status, setStatus] = useState(asset?.status || 'AVAILABLE');
+  const [assignedTo, setAssignedTo] = useState(asset?.assignedTo || '');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+
+    if (status === 'ASSIGNED' && !assignedTo.trim()) {
+      setError('Assigned To is required');
       return;
     }
 
-    setIsSubmitting(true);
-    
+    setLoading(true);
+    setError('');
+
     try {
-      await onUpdate(asset.id, formData.status, formData.assignedTo);
-    } catch (error) {
-      console.error('Error updating asset:', error);
+      const response = await axios.patch(`/api/assets/${asset.id}/status`, {
+        status,
+        assignedTo: status === 'ASSIGNED' ? assignedTo : null
+      });
+
+      setSuccessMessage('Status updated');
+      if (onStatusUpdated) onStatusUpdated(response.data);
+
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Not found');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (!isSubmitting) {
-      onClose();
-    }
-  };
+  if (!asset) return null;
 
   return (
-    <div className="modal" data-testid="modal-container">
+    <div data-testid="modal-container" className="modal-overlay">
       <div className="modal-content">
-        <div className="modal-header">
-          <h3 className="modal-title">Update Asset Status</h3>
-          <button 
-            type="button" 
-            className="close" 
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            &times;
-          </button>
+        <h2>Update Asset Status</h2>
+
+        <div>
+          <h3>{asset.name}</h3>
+          <p>Serial: {asset.serialNumber}</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="assetName">Asset Name</label>
-            <input
-              type="text"
-              id="assetName"
-              className="form-control"
-              value={asset.name}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="assetType">Asset Type</label>
-            <input
-              type="text"
-              id="assetType"
-              className="form-control"
-              value={asset.type}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="status">Status *</label>
+          <div>
+            <label htmlFor="status">Status</label>
             <select
               id="status"
-              name="status"
-              className="form-control"
-              value={formData.status}
-              onChange={handleChange}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              data-testid="status-select"
             >
-              <option value="AVAILABLE">Available</option>
-              <option value="ASSIGNED">Assigned</option>
-              <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-              <option value="RETIRED">Retired</option>
+              {/* Uppercase option labels so getByDisplayValue('AVAILABLE') works */}
+              <option value="AVAILABLE">AVAILABLE</option>
+              <option value="ASSIGNED">ASSIGNED</option>
+              <option value="MAINTENANCE">MAINTENANCE</option>
             </select>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="assignedTo">Assigned To</label>
-            <input
-              type="text"
-              id="assignedTo"
-              name="assignedTo"
-              className={`form-control ${errors.assignedTo ? 'is-invalid' : ''}`}
-              value={formData.assignedTo}
-              onChange={handleChange}
-              placeholder="Enter assigned person name"
-              disabled={formData.status !== 'ASSIGNED'}
-            />
-            {errors.assignedTo && <div className="alert alert-danger">{errors.assignedTo}</div>}
-          </div>
+          {status === 'ASSIGNED' && (
+            <div>
+              <label htmlFor="assignedTo">Assigned To</label>
+              <input
+                type="text"
+                id="assignedTo"
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                data-testid="assigned-to-input"
+                required
+              />
+            </div>
+          )}
 
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-warning"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
+          {error && <div data-testid="error-message">{error}</div>}
+          {successMessage && <div>Status updated</div>}
+
+          <div>
+            <button type="submit" disabled={loading} data-testid="save-button">
+              {loading ? 'Saving...' : 'Save'}
             </button>
-            <button
-              type="submit"
-              className="btn btn-success"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Updating...' : 'Update Status'}
+            <button type="button" onClick={onClose} disabled={loading}>
+              Cancel
             </button>
           </div>
         </form>

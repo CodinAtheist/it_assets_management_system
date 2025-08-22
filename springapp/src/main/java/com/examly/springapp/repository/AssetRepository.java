@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AssetRepository extends JpaRepository<Asset, Long> {
-    Optional<Asset> findBySerialNumber(String serialNumber);
+  Optional<Asset> findBySerialNumber(String serialNumber);
 
-    List<Asset> findByTypeAndStatus(AssetType type, AssetStatus status);
+  List<Asset> findByTypeAndStatus(AssetType type, AssetStatus status);
 
-    List<Asset> findByType(AssetType type);
+  List<Asset> findByType(AssetType type);
 
-    List<Asset> findByStatus(AssetStatus status);
+  List<Asset> findByStatus(AssetStatus status);
 
-    List<Asset> findByNameContainingIgnoreCaseOrSerialNumberContainingIgnoreCase(String name, String serialNumber);
+  List<Asset> findByNameContainingIgnoreCaseOrSerialNumberContainingIgnoreCase(String name, String serialNumber);
 }
